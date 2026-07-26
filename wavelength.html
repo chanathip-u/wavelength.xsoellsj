@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>คลื่นความคิด — Wavelength</title>
+<style>
+  :root{
+    --navy-deep:#141b2e;
+    --navy:#1c2440;
+    --brass:#d6a44e;
+    --brass-dim:#8a6f3d;
+    --cream:#f2ead9;
+    --cream-dim:#b9b0a0;
+    --magenta:#d6524a;
+    --teal:#4caf78;
+    --zone4:#e6bf5c;
+    --zone3:#c98a4b;
+    --zone2:#8e5b45;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse at 50% -10%, #26315a 0%, var(--navy-deep) 55%),
+      var(--navy-deep);
+    color:var(--cream);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    display:flex;
+    justify-content:center;
+    overflow-x:hidden;
+  }
+  .app{
+    width:100%;
+    max-width:520px;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    padding:20px 18px 40px;
+    position:relative;
+  }
+  .noise{
+    position:fixed; inset:0; pointer-events:none; opacity:.035; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .eyebrow{
+    font-family: Georgia, "Times New Roman", serif;
+    font-style:italic;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    font-size:12px;
+    color:var(--brass);
+    margin:0 0 4px;
+  }
+  h1.title{
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight:700;
+    font-size:32px;
+    letter-spacing:.01em;
+    margin:0 0 6px;
+    color:var(--cream);
+  }
+  .sub{ color:var(--cream-dim); font-size:14px; line-height:1.6; margin:0 0 22px;}
+
+  /* ---------- shared card ---------- */
+  .card{
+    background:linear-gradient(180deg, #1e274a, #171e38);
+    border:1px solid rgba(214,164,78,.18);
+    border-radius:18px;
+    padding:20px;
+    box-shadow: 0 20px 40px -20px rgba(0,0,0,.6);
+    margin-bottom:16px;
+  }
+  label.field-label{
+    display:block; font-size:12px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--brass); margin-bottom:8px;
+  }
+  input[type=text]{
+    width:100%; padding:13px 14px; border-radius:10px; border:1px solid rgba(242,234,217,.15);
+    background:rgba(0,0,0,.22); color:var(--cream); font-size:16px; outline:none;
+  }
+  input[type=text]:focus{ border-color:var(--brass); }
+  input[type=text]::placeholder{ color:rgba(242,234,217,.35); }
+
+  .row2{ display:flex; gap:12px; }
+  .row2 > div{ flex:1; }
+
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    width:100%; padding:15px 18px; border-radius:12px; border:none; cursor:pointer;
+    font-size:16px; font-weight:600; letter-spacing:.01em;
+    background:var(--brass); color:#20160a;
+    transition:transform .12s ease, filter .12s ease;
+  }
+  .btn:active{ transform:scale(.98); }
+  .btn:hover{ filter:brightness(1.07); }
+  .btn.ghost{
+    background:transparent; color:var(--cream); border:1px solid rgba(242,234,217,.25);
+  }
+  .btn.ghost:hover{ background:rgba(242,234,217,.06); }
+  .btn.danger{ background:var(--magenta); color:#2a0d12; }
+  .btn.teal{ background:var(--teal); color:#062421; }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; }
+  .btn-row{ display:flex; gap:10px; margin-top:14px; }
+  .btn-row .btn{ width:auto; flex:1; }
+
+  .pill{
+    display:inline-block; padding:4px 12px; border-radius:999px; font-size:12px;
+    background:rgba(214,164,78,.14); color:var(--brass); border:1px solid rgba(214,164,78,.3);
+  }
+
+  /* ---------- scoreboard ---------- */
+  .scoreboard{
+    display:flex; gap:10px; margin-bottom:16px;
+  }
+  .score-team{
+    flex:1; border-radius:14px; padding:12px 14px; position:relative; overflow:hidden;
+    border:1px solid rgba(255,255,255,.08);
+  }
+  .score-team.a{ background:linear-gradient(135deg, rgba(217,83,106,.18), rgba(217,83,106,.05)); }
+  .score-team.b{ background:linear-gradient(135deg, rgba(58,163,152,.18), rgba(58,163,152,.05)); }
+  .score-team .name{ font-size:12px; color:var(--cream-dim); letter-spacing:.05em; }
+  .score-team .pts{ font-family:Georgia, serif; font-size:30px; font-weight:700; }
+  .score-team.active::after{
+    content:"กำลังเล่น"; position:absolute; top:10px; right:10px; font-size:10px;
+    color:var(--brass); letter-spacing:.06em;
+  }
+
+  /* ---------- dial ---------- */
+  .dial-wrap{ position:relative; width:100%; max-width:440px; margin:8px auto 0; }
+  svg{ width:100%; display:block; overflow:visible; }
+  .tick{ stroke:rgba(242,234,217,.28); stroke-width:2; }
+  .tick.mid{ stroke:var(--brass); stroke-width:3;}
+  .zone-seg{ opacity:.95; }
+  .needle-hub{ fill:var(--brass); stroke:var(--navy-deep); stroke-width:2; }
+  .needle-line{ stroke:var(--cream); stroke-width:4; stroke-linecap:round; }
+  .cover-plate{ fill:#0f1428; }
+
+  .spec-labels{ display:flex; justify-content:space-between; margin-top:10px; padding:0 4px; }
+  .spec-labels span{ font-family:Georgia,serif; font-weight:700; font-size:15px; max-width:44%; }
+  .spec-labels .left{ text-align:left; color:var(--magenta); }
+  .spec-labels .right{ text-align:right; color:var(--teal); }
+
+  input[type=range]{
+    width:100%; margin-top:20px; -webkit-appearance:none; appearance:none;
+    height:8px; border-radius:6px; background:linear-gradient(90deg, var(--magenta), var(--brass), var(--teal));
+    outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none; width:28px; height:28px; border-radius:50%;
+    background:var(--cream); border:4px solid var(--navy-deep); cursor:grab; box-shadow:0 2px 8px rgba(0,0,0,.5);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:28px; height:28px; border-radius:50%; background:var(--cream); border:4px solid var(--navy-deep); cursor:grab;
+  }
+
+  .clue-display{
+    text-align:center; padding:18px 10px 6px;
+  }
+  .clue-display .word{
+    font-family:Georgia, serif; font-size:30px; font-weight:700; color:var(--brass);
+    word-break:break-word;
+  }
+
+  .hidden{ display:none !important; }
+
+  .instructions{
+    font-size:13px; color:var(--cream-dim); line-height:1.7; margin-top:10px;
+  }
+  .instructions b{ color:var(--cream); }
+
+  .center-msg{ text-align:center; padding:30px 10px; }
+  .center-msg .big{ font-size:22px; font-weight:700; margin-bottom:8px; }
+
+  .footer-note{ text-align:center; color:var(--cream-dim); font-size:11px; margin-top:24px; letter-spacing:.03em; }
+
+  .result-line{ display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px dashed rgba(242,234,217,.12); }
+  .result-line:last-child{ border-bottom:none; }
+  .result-line .lbl{ color:var(--cream-dim); font-size:14px; }
+  .result-line .val{ font-weight:700; font-size:15px; }
+
+  .steal-choice{ display:flex; gap:10px; margin-top:10px; }
+  .steal-choice .btn{ flex:1; }
+
+  .setup-list label{ display:flex; align-items:center; gap:10px; font-size:14px; padding:6px 0; color:var(--cream-dim); }
+
+  select.mode{
+    width:100%; padding:13px 14px; border-radius:10px; border:1px solid rgba(242,234,217,.15);
+    background:rgba(0,0,0,.22); color:var(--cream); font-size:15px; outline:none;
+  }
+
+  .mode-toggle{ display:flex; gap:10px; }
+  .mode-card{
+    flex:1; padding:14px 12px; border-radius:12px; border:1px solid rgba(242,234,217,.15);
+    background:rgba(0,0,0,.18); cursor:pointer; transition:border-color .12s ease, background .12s ease;
+  }
+  .mode-card .mc-title{ font-weight:700; font-size:14px; margin-bottom:4px; }
+  .mode-card .mc-sub{ font-size:11.5px; color:var(--cream-dim); line-height:1.5; }
+  .mode-card.selected{ border-color:var(--brass); background:rgba(214,164,78,.1); }
+  .mode-card.selected .mc-title{ color:var(--brass); }
+
+  .duo-bar{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 14px; border-radius:12px; margin-bottom:16px;
+    background:rgba(214,164,78,.08); border:1px solid rgba(214,164,78,.2);
+    font-size:13px; color:var(--cream-dim);
+  }
+  .duo-bar b{ color:var(--brass); }
+
+  .reroll-btn{
+    width:100%; margin-top:12px; padding:10px 14px; border-radius:10px; border:1px dashed rgba(242,234,217,.3);
+    background:transparent; color:var(--cream-dim); font-size:13px; cursor:pointer;
+  }
+  .reroll-btn:hover{ color:var(--cream); border-color:var(--brass); }
+</style>
+</head>
+<body>
+<div class="noise"></div>
+<div class="app" id="app"></div>
+
+<script>
+/* ============ DATA ============ */
+const SPECTRUMS = [
+  ["ร้อน","เย็น"], ["งานหนัก","งานเบา"], ["ไร้ประโยชน์","มีประโยชน์"],
+  ["กลิ่นเหม็น","กลิ่นหอม"], ["เผ็ดน้อย","เผ็ดมาก"], ["ถูก","แพง"],
+  ["น่ากลัว","น่ารัก"], ["ดังมาก","เงียบมาก"], ["ของเก่า","ของใหม่"],
+  ["ทำเองไม่ได้","ทำเองได้ง่าย"], ["จำเป็น","ฟุ่มเฟือย"], ["จริงจัง","ตลก"],
+  ["เด็ก","ผู้ใหญ่"], ["เล็กมาก","ใหญ่มาก"], ["ช้ามาก","เร็วมาก"],
+  ["อึดอัดใจ","โรแมนติก"], ["อันตราย","ปลอดภัย"], ["เรียบง่าย","หรูหรา"],
+  ["น่าเบื่อ","น่าตื่นเต้น"], ["ของปลอม","ของจริง"], ["สกปรก","สะอาด"],
+  ["โบราณ","ล้ำยุค"], ["เคร่งเครียด","สบายๆ"], ["น่าอาย","น่าภูมิใจ"],
+  ["กินคนเดียวได้","กินคนเดียวไม่ได้"], ["ฤดูร้อน","ฤดูหนาว"],
+  ["สิ่งที่ควรทำเป็นความลับ","สิ่งที่ควรประกาศให้โลกรู้"], ["ของใช้ในบ้าน","ของใช้นอกบ้าน"],
+  ["เหมาะกับเด็ก","เหมาะกับผู้ใหญ่เท่านั้น"], ["ทำให้อ้วน","ทำให้ผอม"],
+  ["ให้อภัยไม่ได้","ให้อภัยได้"], ["Underrated","Overrated"],
+  ["ของที่ใครๆก็มี","ของที่น้อยคนจะมี"], ["จริงจัง","ติ๊งต๊อง"],
+  ["Dog person","Cat person"], ["ใจร้าย","ใจดี"],
+  ["Niche","Mainstream"], ["ซื่อบื้อ","ฉลาด"],
+  ["สำคัญทางประวัติศาสตร์","ไม่สำคัญทางประวัติศาสตร์"],
+  ["คำบอกเลิกที่แย่","คำบอกเลิกที่ดี"], ["อายุสั้น","อายุยืน"],
+  ["แทนที่ไม่ได้","แทนที่ได้"], ["ไม่เป็นที่รู้จัก","มีชื่อเสียง"],
+  ["ไม่มีใครทำ","ใครๆก็ทำ"], ["Red flag","Green flag"],
+  ["นิสัยไม่ดี","นิสัยดี"], ["พังง่าย","ทน"],
+  ["อาหารเปียก","อาหารแห้ง"], ["มลพิษ","เป็นมิตรต่อสิ่งแวดล้อม"],
+  ["มุ่ง","มีคารม"], ["คำสะกดยาก","คำสะกดง่าย"],
+  ["ของไม่น่าซื้อ","ของน่าซื้อ"], ["กิจกรรมผู้หญิง","กิจกรรมผู้ชาย"],
+  ["อวัยวะที่ไม่มีประโยชน์","อวัยวะที่มีประโยชน์"], ["ไม่น่าดึงดูด","น่าดึงดูด"],
+  ["วิชาที่ไม่น่าเรียน","วิชาที่น่าเรียน"], ["แบรนด์ที่ไม่ดี","แบรนด์ที่ดี"],
+  ["อาชีพอันตราย","อาชีพไม่อันตราย"], ["ธรรมดา","พิเศษ"],
+  ["กินแล้วไม่อิ่ม","กินแล้วอิ่ม"], ["Gen Z","Gen Y"],
+  ["เมะ","เคะ"], ["ประเทศไม่น่าเที่ยว","ประเทศน่าเที่ยว"],
+  ["ติดดิน","แกลม"], ["ธรรมดา","แฟชั่น"],
+  ["Underpriced","Overpriced"], ["สัตว์ไม่น่าเลี้ยง","สัตว์น่าเลี้ยง"],
+  ["กิจกรรมที่ไม่น่าทำในวันหยุด","กิจกรรมที่น่าทำในวันหยุด"], ["จีบ","เฟรนด์ลี่"],
+  ["คนปกติ","คนบ้า"], ["ไม่มีกาลเทศะ","มีกาลเทศะ"],
+  ["ไม่มั่นใจในตัวเอง","หลงตัวเอง"]
+];
+
+const MODES = {
+  easy:   { label:"ง่าย (โซนกว้าง)", z4:10, z3:20, z2:32 },
+  normal: { label:"ปกติ (มาตรฐาน)", z4:5,  z3:10, z2:16 },
+  hard:   { label:"ยาก (โซนแคบ)",   z4:3,  z3:6,  z2:10 }
+};
+
+/* ============ STATE ============ */
+let state = {
+  phase: "setup",         // setup | pass | psychic | guessing | steal | reveal
+  playerMode: "team",     // "team" (2+ teams, scored, steals) | "duo" (2 players, no score, no steal)
+  teamA: "ทีมสีชมพู",
+  teamB: "ทีมสีเขียว",
+  scoreA: 0,
+  scoreB: 0,
+  activeTeam: "A",        // team currently supplying the psychic
+  round: 1,
+  mode: "normal",
+  target: 90,             // 0-180
+  spectrum: null,
+  clue: "",
+  guess: 90,
+  guessLocked: false,
+  stealSide: null,        // 'left' | 'right' | null
+  lastScore: null
+};
+
+function otherTeam(t){ return t === "A" ? "B" : "A"; }
+function teamName(t){ return t === "A" ? state.teamA : state.teamB; }
+function isDuo(){ return state.playerMode === "duo"; }
+
+function rollSpectrum(){
+  state.spectrum = SPECTRUMS[Math.floor(Math.random() * SPECTRUMS.length)];
+  state.target = Math.floor(Math.random() * 161) + 10; // 10-170, avoid extreme edges
+}
+
+/* ============ RENDER HELPERS ============ */
+const app = document.getElementById("app");
+function render(){ app.innerHTML = ""; app.appendChild(views[state.phase]()); }
+
+function el(html){
+  const d = document.createElement("div");
+  d.innerHTML = html.trim();
+  return d.firstElementChild;
+}
+
+function scoreboard(highlight){
+  return `
+  <div class="scoreboard">
+    <div class="score-team a ${highlight==='A'?'active':''}">
+      <div class="name">${state.teamA}</div>
+      <div class="pts">${state.scoreA}</div>
+    </div>
+    <div class="score-team b ${highlight==='B'?'active':''}">
+      <div class="name">${state.teamB}</div>
+      <div class="pts">${state.scoreB}</div>
+    </div>
+  </div>`;
+}
+
+function duoBar(){
+  return `<div class="duo-bar"><span>รอบที่ ${state.round}</span><span><b>${teamName(state.activeTeam)}</b> ใบ้ &middot; <b>${teamName(otherTeam(state.activeTeam))}</b> ตอบ</span></div>`;
+}
+
+function statusBar(highlight){
+  return isDuo() ? duoBar() : scoreboard(highlight);
+}
+
+/* ---- dial SVG builder ----
+   angle domain 0 (left) .. 180 (right), drawn as upper semicircle
+   cx,cy = center bottom, r = radius
+*/
+function polar(cx, cy, r, angleDeg){
+  // angleDeg: 0 = left horizontal, 180 = right horizontal, going over the top
+  const rad = Math.PI * (180 - angleDeg) / 180;
+  return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) };
+}
+
+function arcPath(cx, cy, r, a0, a1){
+  const p0 = polar(cx, cy, r, a0);
+  const p1 = polar(cx, cy, r, a1);
+  const large = (a1 - a0) > 180 ? 1 : 0;
+  return `M ${p0.x} ${p0.y} A ${r} ${r} 0 ${large} 1 ${p1.x} ${p1.y}`;
+}
+
+function zoneRing(cx, cy, rOuter, rInner, a0, a1, color){
+  const o0 = polar(cx, cy, rOuter, a0), o1 = polar(cx, cy, rOuter, a1);
+  const i1 = polar(cx, cy, rInner, a1), i0 = polar(cx, cy, rInner, a0);
+  const large = (a1 - a0) > 180 ? 1 : 0;
+  const d = `M ${o0.x} ${o0.y} A ${rOuter} ${rOuter} 0 ${large} 1 ${o1.x} ${o1.y}
+             L ${i1.x} ${i1.y} A ${rInner} ${rInner} 0 ${large} 0 ${i0.x} ${i0.y} Z`;
+  return `<path class="zone-seg" d="${d}" fill="${color}"></path>`;
+}
+
+function zoneLabelText(cx, cy, rMid, a0, a1, label, fill){
+  const midAngle = (a0 + a1) / 2;
+  const p = polar(cx, cy, rMid, midAngle);
+  return `<text x="${p.x}" y="${p.y}" text-anchor="middle" dominant-baseline="central" font-family="Georgia, serif" font-weight="700" font-size="15" fill="${fill}">${label}</text>`;
+}
+
+function buildDial({ showTarget, target, needleAngle, mode }){
+  const W = 400, H = 240, cx = 200, cy = 220, rOuter = 190, rInner = 150;
+  const rMid = (rOuter + rInner) / 2;
+  let zones = "", labels = "";
+  if (showTarget){
+    const m = MODES[mode];
+    zones += zoneRing(cx, cy, rOuter, rInner, target - m.z2, target - m.z3, "var(--zone2)");
+    zones += zoneRing(cx, cy, rOuter, rInner, target - m.z3, target - m.z4, "var(--zone3)");
+    zones += zoneRing(cx, cy, rOuter, rInner, target - m.z4, target + m.z4, "var(--zone4)");
+    zones += zoneRing(cx, cy, rOuter, rInner, target + m.z4, target + m.z3, "var(--zone3)");
+    zones += zoneRing(cx, cy, rOuter, rInner, target + m.z3, target + m.z2, "var(--zone2)");
+
+    labels += zoneLabelText(cx, cy, rMid, target - m.z2, target - m.z3, "2", "#f2ead9");
+    labels += zoneLabelText(cx, cy, rMid, target - m.z3, target - m.z4, "3", "#141b2e");
+    labels += zoneLabelText(cx, cy, rMid, target - m.z4, target + m.z4, "4", "#141b2e");
+    labels += zoneLabelText(cx, cy, rMid, target + m.z4, target + m.z3, "3", "#141b2e");
+    labels += zoneLabelText(cx, cy, rMid, target + m.z3, target + m.z2, "2", "#f2ead9");
+  } else {
+    zones += `<path class="cover-plate" d="${arcPath(cx,cy,rOuter,0,180)} L ${cx-rInner} ${cy} A ${rInner} ${rInner} 0 0 1 ${cx+rInner} ${cy} Z" opacity="0"></path>`;
+    zones += zoneRing(cx, cy, rOuter, rInner, 0, 180, "#2a3357");
+  }
+
+  // ticks every 10deg
+  let ticks = "";
+  for (let a = 0; a <= 180; a += 10){
+    const p1 = polar(cx, cy, rInner - 6, a);
+    const p2 = polar(cx, cy, rInner - 16, a);
+    ticks += `<line class="tick ${a===90?'mid':''}" x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}"></line>`;
+  }
+
+  const needleTip = polar(cx, cy, rInner - 22, needleAngle);
+
+  return `
+  <svg viewBox="0 0 ${W} ${H}">
+    <circle cx="${cx}" cy="${cy}" r="${rOuter+6}" fill="none" stroke="rgba(214,164,78,.15)" stroke-width="1"></circle>
+    ${zones}
+    ${labels}
+    ${ticks}
+    <line class="needle-line" x1="${cx}" y1="${cy}" x2="${needleTip.x}" y2="${needleTip.y}"></line>
+    <circle class="needle-hub" cx="${cx}" cy="${cy}" r="9"></circle>
+  </svg>`;
+}
+
+/* ============ VIEWS ============ */
+const views = {};
+
+views.setup = function(){
+  const wrap = el(`<div>
+    <p class="eyebrow">เกมทายใจ &middot; ปาร์ตี้เกม</p>
+    <h1 class="title">คลื่นความคิด</h1>
+    <p class="sub">ทายว่าเป้าหมายลับอยู่ตรงไหนบนสเปกตรัม จากคำใบ้เพียงคำเดียวของเพื่อนร่วมทีม</p>
+
+    <div class="card">
+      <label class="field-label">รูปแบบการเล่น</label>
+      <div class="mode-toggle">
+        <div class="mode-card ${state.playerMode==='team'?'selected':''}" id="pmTeam">
+          <div class="mc-title">2 ทีมขึ้นไป</div>
+          <div class="mc-sub">คิดคะแนนสะสม มีทายแทรกขโมยคะแนน</div>
+        </div>
+        <div class="mode-card ${state.playerMode==='duo'?'selected':''}" id="pmDuo">
+          <div class="mc-title">2 คน</div>
+          <div class="mc-sub">เล่นเอาสนุกอย่างเดียว ไม่คิดคะแนน ไม่มีทายแทรก</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="nameCard">
+      <label class="field-label" id="nameLabelA">ชื่อทีมที่ 1</label>
+      <input type="text" id="teamAInput" value="${state.teamA}" maxlength="20">
+      <div style="height:14px"></div>
+      <label class="field-label" id="nameLabelB">ชื่อทีมที่ 2</label>
+      <input type="text" id="teamBInput" value="${state.teamB}" maxlength="20">
+      <div style="height:14px"></div>
+      <label class="field-label">ระดับความยาก</label>
+      <select class="mode" id="modeSelect">
+        ${Object.entries(MODES).map(([k,v]) => `<option value="${k}" ${k===state.mode?'selected':''}>${v.label}</option>`).join("")}
+      </select>
+    </div>
+
+    <div class="card">
+      <p class="instructions" id="howToPlay"></p>
+    </div>
+
+    <button class="btn" id="startBtn">เริ่มเกม</button>
+    <p class="footer-note">ส่งต่อจอเดียวกันไปมาระหว่างผู้เล่น (Pass &amp; Play)</p>
+  </div>`);
+
+  function syncModeUI(){
+    wrap.querySelector("#pmTeam").classList.toggle("selected", state.playerMode === "team");
+    wrap.querySelector("#pmDuo").classList.toggle("selected", state.playerMode === "duo");
+    const duo = isDuo();
+    wrap.querySelector("#nameLabelA").textContent = duo ? "ชื่อผู้เล่นที่ 1" : "ชื่อทีมที่ 1";
+    wrap.querySelector("#nameLabelB").textContent = duo ? "ชื่อผู้เล่นที่ 2" : "ชื่อทีมที่ 2";
+    wrap.querySelector("#howToPlay").innerHTML = duo
+      ? `<b>วิธีเล่น:</b> สลับกันเป็น "คนใบ้" ทุกรอบ คนใบ้เห็นตำแหน่งเป้าหมายลับบนหน้าปัดเพียงคนเดียว
+         แล้วให้คำใบ้ 1 คำ/วลี ที่สื่อถึงตำแหน่งนั้นบนสเปกตรัมสองขั้ว อีกฝ่ายเลื่อนเข็มไปยังจุดที่คิดว่าใช่
+         โหมดนี้เน้นความสนุกจากบทสนทนา ไม่มีการคิดคะแนนหรือทายแทรก`
+      : `<b>วิธีเล่น:</b> แต่ละรอบจะมี "คนใบ้" หนึ่งคนจากทีมที่กำลังเล่น เห็นตำแหน่งเป้าหมายลับบนหน้าปัดเพียงคนเดียว
+         แล้วให้คำใบ้ 1 คำ/วลี ที่สื่อถึงตำแหน่งนั้นบนสเปกตรัมสองขั้ว เพื่อนร่วมทีมช่วยกันหมุนเข็มไปยังจุดที่คิดว่าใช่
+         ยิ่งใกล้จุดกึ่งกลางเป้าหมาย ยิ่งได้คะแนนเยอะ ทีมตรงข้ามทายแทรกได้ว่าเข็มควรเอียงซ้ายหรือขวาเพื่อขโมยคะแนน`;
+  }
+  syncModeUI();
+
+  wrap.querySelector("#pmTeam").onclick = () => { state.playerMode = "team"; syncModeUI(); };
+  wrap.querySelector("#pmDuo").onclick = () => { state.playerMode = "duo"; syncModeUI(); };
+
+  wrap.querySelector("#startBtn").onclick = () => {
+    const duo = isDuo();
+    state.teamA = wrap.querySelector("#teamAInput").value.trim() || (duo ? "ผู้เล่น 1" : "ทีมที่ 1");
+    state.teamB = wrap.querySelector("#teamBInput").value.trim() || (duo ? "ผู้เล่น 2" : "ทีมที่ 2");
+    state.mode = wrap.querySelector("#modeSelect").value;
+    state.scoreA = 0; state.scoreB = 0; state.round = 1; state.activeTeam = "A";
+    startRound();
+  };
+  return wrap;
+};
+
+function startRound(){
+  rollSpectrum();
+  state.clue = "";
+  state.guess = 90;
+  state.guessLocked = false;
+  state.stealSide = null;
+  state.lastScore = null;
+  state.phase = "pass";
+  render();
+}
+
+views.pass = function(){
+  const wrap = el(`<div>
+    ${statusBar(state.activeTeam)}
+    <div class="card center-msg">
+      <p class="pill">รอบที่ ${state.round}</p>
+      <div style="height:14px"></div>
+      <div class="big">${isDuo()
+        ? `${teamName(state.activeTeam)} ใบ้<br>${teamName(otherTeam(state.activeTeam))} ตอบ`
+        : `1 คนจาก ${teamName(state.activeTeam)}<br>ใบ้`}</div>
+      <p class="sub" style="margin-top:6px">คนอื่น ๆ ห้ามดูจอตอนนี้! เมื่อพร้อมแล้วให้คนใบ้กดปุ่มด้านล่าง</p>
+      <button class="btn" id="revealBtn" style="margin-top:10px">ฉันคือคนใบ้ พร้อมดูเป้าหมาย</button>
+    </div>
+  </div>`);
+  wrap.querySelector("#revealBtn").onclick = () => { state.phase = "psychic"; render(); };
+  return wrap;
+};
+
+views.psychic = function(){
+  const [left, right] = state.spectrum;
+  const wrap = el(`<div>
+    ${statusBar(state.activeTeam)}
+    <div class="card">
+      <p class="pill">เฉพาะคนใบ้เท่านั้นที่เห็นตรงนี้</p>
+      <div class="dial-wrap">${buildDial({ showTarget:true, target: state.target, needleAngle: state.target, mode: state.mode })}</div>
+      <div class="spec-labels"><span class="left">${left}</span><span class="right">${right}</span></div>
+      <p class="instructions" style="text-align:center">แถบสีทองคือใจกลางเป้าหมาย จำตำแหน่งไว้ให้ดี</p>
+      <button class="reroll-btn" id="rerollBtn">🎲 ไม่พอใจคู่คำนี้? สุ่มคู่คำใหม่</button>
+    </div>
+
+    <div class="card">
+      <label class="field-label">คำใบ้ของคุณ (1 คำ หรือ 1 วลี)</label>
+      <input type="text" id="clueInput" placeholder="เช่น ทุเรียน, ถุงเท้าเตะบอล..." maxlength="60" value="${state.clue}">
+      <button class="btn" id="giveClueBtn" style="margin-top:14px">ให้คำใบ้แล้ว &middot; ซ่อนหน้าปัด</button>
+    </div>
+    <p class="footer-note">หลังกดปุ่ม ส่งจอต่อให้เพื่อนร่วมทีมที่เหลือ</p>
+  </div>`);
+
+  wrap.querySelector("#rerollBtn").onclick = () => {
+    const clueVal = wrap.querySelector("#clueInput").value;
+    rollSpectrum();
+    state.clue = clueVal;
+    render();
+  };
+
+  wrap.querySelector("#giveClueBtn").onclick = () => {
+    const v = wrap.querySelector("#clueInput").value.trim();
+    if (!v){ wrap.querySelector("#clueInput").focus(); return; }
+    state.clue = v;
+    state.phase = "guessing";
+    render();
+  };
+  return wrap;
+};
+
+views.guessing = function(){
+  const [left, right] = state.spectrum;
+  const wrap = el(`<div>
+    ${statusBar(state.activeTeam)}
+    <div class="card">
+      <div class="clue-display">
+        <p class="pill">คำใบ้จาก ${teamName(state.activeTeam)}</p>
+        <div class="word">"${state.clue}"</div>
+      </div>
+      <div class="dial-wrap">${buildDial({ showTarget:false, target: state.target, needleAngle: state.guess, mode: state.mode })}</div>
+      <div class="spec-labels"><span class="left">${left}</span><span class="right">${right}</span></div>
+      <input type="range" min="0" max="180" value="${state.guess}" id="guessRange">
+      <p class="instructions" style="text-align:center">${isDuo()
+        ? `<b>${teamName(otherTeam(state.activeTeam))}</b> เลื่อนเข็มไปยังจุดที่คิดว่าตรงกับคำใบ้มากที่สุด`
+        : `ทีม <b>${teamName(state.activeTeam)}</b> ปรึกษากันแล้วเลื่อนเข็มไปยังจุดที่คิดว่าตรงกับคำใบ้มากที่สุด`}</p>
+    </div>
+    <button class="btn" id="lockBtn">ล็อกคำตอบของทีม</button>
+  </div>`);
+
+  const range = wrap.querySelector("#guessRange");
+  range.oninput = () => {
+    state.guess = Number(range.value);
+    wrap.querySelector(".dial-wrap").innerHTML = buildDial({ showTarget:false, target: state.target, needleAngle: state.guess, mode: state.mode });
+  };
+  wrap.querySelector("#lockBtn").onclick = () => {
+    state.phase = isDuo() ? "reveal" : "steal";
+    render();
+  };
+  return wrap;
+};
+
+views.steal = function(){
+  const opp = otherTeam(state.activeTeam);
+  const [left, right] = state.spectrum;
+  const wrap = el(`<div>
+    ${statusBar(state.activeTeam)}
+    <div class="card">
+      <p class="pill">เข็มที่ ${teamName(state.activeTeam)} ทายไว้</p>
+      <div class="dial-wrap">${buildDial({ showTarget:false, target: state.target, needleAngle: state.guess, mode: state.mode })}</div>
+      <div class="spec-labels"><span class="left">${left}</span><span class="right">${right}</span></div>
+    </div>
+    <div class="card center-msg">
+      <p class="pill">ทายแทรกขโมยคะแนน</p>
+      <div style="height:10px"></div>
+      <div class="big">ตาของ ${teamName(opp)}</div>
+      <p class="sub">ถ้าคิดว่าเป้าหมายจริงไม่ได้อยู่ตรงเข็มพอดี ให้ทายว่าเป้าหมายเอียงไปทางซ้ายหรือขวาของเข็ม เพื่อขโมยคะแนนถ้าทีมหลักไม่โดนใจกลาง</p>
+      <div class="steal-choice">
+        <button class="btn ghost" id="leftBtn">⟵ เอียงซ้าย</button>
+        <button class="btn ghost" id="rightBtn">เอียงขวา ⟶</button>
+      </div>
+      <button class="btn" id="skipBtn" style="margin-top:10px; background:transparent; color:var(--cream-dim); border:1px solid rgba(242,234,217,.15)">ไม่ทายแทรก</button>
+    </div>
+  </div>`);
+  wrap.querySelector("#leftBtn").onclick = () => { state.stealSide = "left"; state.phase = "reveal"; render(); };
+  wrap.querySelector("#rightBtn").onclick = () => { state.stealSide = "right"; state.phase = "reveal"; render(); };
+  wrap.querySelector("#skipBtn").onclick = () => { state.stealSide = null; state.phase = "reveal"; render(); };
+  return wrap;
+};
+
+function computeScore(){
+  const m = MODES[state.mode];
+  const diff = Math.abs(state.guess - state.target);
+  let pts = 0;
+  if (diff <= m.z4) pts = 4;
+  else if (diff <= m.z3) pts = 3;
+  else if (diff <= m.z2) pts = 2;
+  let stealPts = 0;
+  if (state.stealSide && pts < 4){
+    const actualSide = state.target < state.guess ? "left" : "right";
+    if (state.stealSide === actualSide) stealPts = 2;
+  }
+  return { diff, pts, stealPts };
+}
+
+function scoreLabel(pts){
+  if (pts === 4) return "ตรงเป๊ะ! 🎯";
+  if (pts === 3) return "ใกล้มาก";
+  if (pts === 2) return "พอไหว";
+  return "ห่างไปหน่อย";
+}
+
+views.reveal = function(){
+  const [left, right] = state.spectrum;
+  const { diff, pts, stealPts } = computeScore();
+  const opp = otherTeam(state.activeTeam);
+  const duo = isDuo();
+
+  const wrap = el(`<div>
+    ${statusBar(state.activeTeam)}
+    <div class="card">
+      <div class="dial-wrap">${buildDial({ showTarget:true, target: state.target, needleAngle: state.guess, mode: state.mode })}</div>
+      <div class="spec-labels"><span class="left">${left}</span><span class="right">${right}</span></div>
+    </div>
+    <div class="card">
+      <div class="result-line"><span class="lbl">คำใบ้</span><span class="val">"${state.clue}"</span></div>
+      ${duo
+        ? `<div class="result-line"><span class="lbl">ได้คะแนน</span><span class="val" style="color:var(--brass)">${pts} แต้ม &middot; ${scoreLabel(pts)}</span></div>`
+        : `<div class="result-line"><span class="lbl">${teamName(state.activeTeam)} ได้คะแนน</span><span class="val" style="color:var(--brass)">+${pts}</span></div>
+           ${state.stealSide ? `<div class="result-line"><span class="lbl">${teamName(opp)} ทายแทรก (${stealPts>0?'สำเร็จ':'พลาด'})</span><span class="val" style="color:${stealPts>0?'var(--teal)':'var(--cream-dim)'}">+${stealPts}</span></div>` : ""}`
+      }
+    </div>
+    <button class="btn" id="nextBtn">รอบต่อไป</button>
+  </div>`);
+
+  wrap.querySelector("#nextBtn").onclick = () => {
+    if (!duo){
+      if (state.activeTeam === "A") state.scoreA += pts;
+      else state.scoreB += pts;
+      if (state.stealSide){
+        if (opp === "A") state.scoreA += stealPts;
+        else state.scoreB += stealPts;
+      }
+    }
+    state.round += 1;
+    state.activeTeam = otherTeam(state.activeTeam);
+    startRound();
+  };
+  return wrap;
+};
+
+/* ============ INIT ============ */
+render();
+</script>
+</body>
+</html>
